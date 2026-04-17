@@ -1,0 +1,52 @@
+name: Node.js CI/CD Pipeline
+
+# Step 1: Trigger the pipeline
+# This tells GitHub to run the pipeline automatically every time code is pushed to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test-and-push:
+    runs-on: ubuntu-latest # A fresh Linux virtual machine provided by GitHub
+
+    steps:
+      # Step 2: Grab the Code
+      # This pulls your latest code from the repository into the runner environment
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Step 3: Set up the correct environment (Node.js)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # Step 4: Install Dependencies
+      # We install Express, Jest, etc. so the tests run successfully
+      - name: Install Dependencies
+        run: npm install
+
+      # Step 5: Verify the Code
+      # This executes 'jest' as we defined in the package.json earlier
+      # If the tests fail, the pipeline will stop right here and prevent broken code from deploying.
+      - name: Run Tests
+        run: npm test
+
+      # Step 6: Log in to Docker Hub
+      # This uses GitHub Secrets to conceal your private credentials securely so they aren't exposed in your code.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Step 7: Build and Push the Docker Image
+      # If tests pass and login succeeds, package it into a container and push it up!
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/my-node-api:latest
